@@ -1,0 +1,10 @@
+
+# Archivos compilados
+build/
+dist/
+artifacts/
+
+# Ejecutables y paquetes para Releases
+*.exe
+*.msi
+*.zip
