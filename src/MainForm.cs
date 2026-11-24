@@ -34,7 +34,7 @@ namespace Jarvis
         private Icon trayImage;
         private LocalSpeech local;
         private bool showUnavailableApps;
-        private bool listening, changing, exiting, hotkeyRegistered;
+        private bool listening, changing, exiting, hotkeyRegistered, launchListeningPending;
         private int generation;
         private string currentPage = "Inicio";
         private string lastStatus = "Micrófono en pausa";
@@ -69,11 +69,11 @@ namespace Jarvis
             if (!test) BuildTray();
             ShowPage("Inicio");
             FormClosing += OnClosing;
-            Shown += delegate
+            Shown += async delegate
             {
                 if (StartInTray) Hide();
                 if (!testMode && !String.IsNullOrEmpty(SettingsStore.LoadWarning)) AddActivity("Sistema", SettingsStore.LoadWarning);
-                if (!testMode && StartListeningOnLaunch) ToggleListening();
+                if (!testMode && StartListeningOnLaunch) await StartOnLaunchAsync();
             };
             Resize += delegate { if (WindowState == FormWindowState.Minimized && !testMode) Hide(); };
         }
@@ -109,7 +109,7 @@ namespace Jarvis
             Panel sidebar = new Panel { Dock = DockStyle.Left, Width = 205, BackColor = Color.FromArgb(14, 22, 30), Padding = new Padding(20) };
             Label brand = LabelAt("J A R V I S", 14, Ink, FontStyle.Bold);
             brand.SetBounds(22, 30, 170, 28);
-            Label edition = LabelAt("PRE RELEASE  /  0.4.3", 8, Muted, FontStyle.Regular);
+            Label edition = LabelAt("PRE RELEASE  /  0.4.4", 8, Muted, FontStyle.Regular);
             edition.SetBounds(23, 62, 170, 24);
             Label initial = LabelAt("V", 32, Mint, FontStyle.Bold);
             initial.SetBounds(26, 116, 66, 65);
@@ -390,10 +390,12 @@ namespace Jarvis
             wake.SetBounds(354, 53, 260, 32);
             identity.Controls.AddRange(new Control[] { nameLabel, user, wake });
 
-            Panel options = Card(flow, 127);
+            Panel options = Card(flow, 155);
             CheckBox speak = new CheckBox { Text = "Confirmar acciones con la voz local de Windows", Checked = settings.SpeakLocal, ForeColor = Ink, Location = new Point(20, 19), Size = new Size(570, 30), FlatStyle = FlatStyle.Flat };
-            CheckBox startup = new CheckBox { Text = "Iniciar en la bandeja al entrar a Windows (micrófono en pausa)", Checked = !testMode && StartupRegistration.IsEnabled, ForeColor = Ink, Location = new Point(20, 65), Size = new Size(620, 35), FlatStyle = FlatStyle.Flat };
-            options.Controls.AddRange(new Control[] { speak, startup });
+            Label voice = LabelAt("Voz preferida: Microsoft Sabina · Español (México)", 9, Muted, FontStyle.Regular);
+            voice.SetBounds(42, 51, 575, 27);
+            CheckBox startup = new CheckBox { Text = "Iniciar en la bandeja al entrar a Windows con el micrófono activo", Checked = !testMode && StartupRegistration.IsEnabled, ForeColor = Ink, Location = new Point(20, 91), Size = new Size(620, 35), FlatStyle = FlatStyle.Flat };
+            options.Controls.AddRange(new Control[] { speak, voice, startup });
             Panel actions = Card(flow, 71);
             actions.BackColor = Back;
             Button save = ButtonOf("Guardar ajustes", true);
@@ -412,7 +414,7 @@ namespace Jarvis
                     if (!testMode)
                     {
                         SettingsStore.Save(next);
-                        if (StartupRegistration.IsEnabled != startup.Checked) StartupRegistration.SetEnabled(startup.Checked);
+                        StartupRegistration.SetEnabled(startup.Checked);
                     }
                     settings = next;
                     saved.Text = "Guardado. Activa el micrófono desde Inicio.";
@@ -466,6 +468,30 @@ namespace Jarvis
 
         private async void ToggleListening()
         {
+            launchListeningPending = false;
+            await ToggleListeningAsync();
+        }
+
+        private async Task StartOnLaunchAsync()
+        {
+            launchListeningPending = true;
+            for (int attempt = 0; attempt < 3 && launchListeningPending && !exiting; attempt++)
+            {
+                if (attempt > 0)
+                {
+                    AddActivity("Sistema", "Reintentando el micrófono al iniciar en 5 segundos.");
+                    await Task.Delay(5000);
+                    if (!launchListeningPending || exiting) break;
+                }
+                await ToggleListeningAsync();
+                if (!launchListeningPending && listening) await StopListeningAsync();
+                if (listening) break;
+            }
+            launchListeningPending = false;
+        }
+
+        private async Task ToggleListeningAsync()
+        {
             if (testMode || changing || exiting) return;
             changing = true;
             RefreshStatus();
@@ -480,7 +506,7 @@ namespace Jarvis
                 catch (Exception ex) { failure = ex; }
                 if (failure != null)
                 {
-                    await StopListeningAsync();
+                    await StopListeningAsync(false);
                     SetStatus("No pude activar la escucha", SafeError(failure));
                     AddActivity("Sistema", SafeError(failure));
                 }
@@ -504,7 +530,7 @@ namespace Jarvis
             speech.Error += s => Ui(async delegate
             {
                 if (generation != session) return;
-                await StopListeningAsync();
+                await StopListeningAsync(!launchListeningPending);
                 SetStatus("Micrófono detenido", s);
                 AddActivity("Sistema", s);
             });
@@ -524,8 +550,9 @@ namespace Jarvis
             RefreshStatus();
         }
 
-        private Task StopListeningAsync()
+        private Task StopListeningAsync(bool cancelLaunch = true)
         {
+            if (cancelLaunch) launchListeningPending = false;
             powerConfirmation.Cancel();
             generation++;
             listening = false;

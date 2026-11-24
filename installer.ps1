@@ -15,4 +15,4 @@ if (-not $CompilerPath -or -not (Test-Path -LiteralPath $CompilerPath)) {
 }
 & $CompilerPath (Join-Path $PSScriptRoot 'installer\Jarvis.iss')
 if ($LASTEXITCODE -ne 0) { throw 'No se pudo compilar el instalador.' }
-Write-Host ('Instalador listo: ' + (Join-Path $PSScriptRoot 'artifacts\Jarvis-Vale-Setup-0.4.3.exe'))
+Write-Host ('Instalador listo: ' + (Join-Path $PSScriptRoot 'artifacts\Jarvis-Vale-Setup-0.4.4.exe'))

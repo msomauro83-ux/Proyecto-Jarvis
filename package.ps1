@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 if (-not $SkipBuild) { & (Join-Path $PSScriptRoot 'build.ps1') }
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$packagePath = Join-Path $PSScriptRoot 'Jarvis-pre-release-0.4.3.zip'
+$packagePath = Join-Path $PSScriptRoot 'Jarvis-pre-release-0.4.4.zip'
 $packageFiles = @(
     @{ Source = 'dist\Jarvis.exe'; Entry = 'dist/Jarvis.exe' },
     @{ Source = 'dist\Jarvis.exe.config'; Entry = 'dist/Jarvis.exe.config' },

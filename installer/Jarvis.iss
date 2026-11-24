@@ -1,11 +1,11 @@
 #ifdef VerificationBuild
-  #define AppName "Jarvis - Vale Verification 0.4.3"
+  #define AppName "Jarvis - Vale Verification 0.4.4"
   #define AppMutexName "Local\Jarvis.Vale.InstallerVerification"
 #else
   #define AppName "Jarvis - Vale"
   #define AppMutexName "Local\Jarvis.Vale.Desktop"
 #endif
-#define AppVersion "0.4.3"
+#define AppVersion "0.4.4"
 
 [Setup]
 #ifdef VerificationBuild
@@ -18,7 +18,7 @@ AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion} Pre release
 AppPublisher=Proyecto Jarvis
 #ifdef VerificationBuild
-DefaultDirName={localappdata}\Programs\Jarvis-Verification-0.4.3
+DefaultDirName={localappdata}\Programs\Jarvis-Verification-0.4.4
 #else
 DefaultDirName={localappdata}\Programs\Jarvis
 #endif
@@ -105,6 +105,7 @@ var
 begin
   if CurUninstallStep = usUninstall then
     if RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'JarvisVale', Command) then
-      if CompareText(Command, '"' + ExpandConstant('{app}\Jarvis.exe') + '" --tray') = 0 then
+      if (CompareText(Command, '"' + ExpandConstant('{app}\Jarvis.exe') + '" --tray') = 0) or
+         (CompareText(Command, '"' + ExpandConstant('{app}\Jarvis.exe') + '" --tray --listen') = 0) then
         RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'JarvisVale');
 end;

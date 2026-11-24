@@ -1,13 +1,13 @@
 param([switch]$VerificationBuild)
 $ErrorActionPreference = 'Stop'
-$testDirectory = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'build\installer-verification-0.4.3'))
+$testDirectory = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'build\installer-verification-0.4.4'))
 $expectedDirectory = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'build')) + [System.IO.Path]::DirectorySeparatorChar
 if (-not $testDirectory.StartsWith($expectedDirectory, [StringComparison]::OrdinalIgnoreCase)) { throw 'La carpeta de prueba debe estar dentro de build.' }
 if (Test-Path -LiteralPath $testDirectory) { throw 'La carpeta de prueba ya existe. Revisa su contenido antes de repetir la prueba.' }
 $applicationId = if ($VerificationBuild) { '{7B479844-6D3D-45A8-ACCB-A68156303A4D}' } else { '{0A59645C-4D26-4BFB-911C-0C8D88DD3346}' }
 $uninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\' + $applicationId + '_is1'
 if (Test-Path -LiteralPath $uninstallKey) { throw 'Hay una instalacion registrada de Jarvis. La prueba no la modificara.' }
-$installerName = if ($VerificationBuild) { 'artifacts\Jarvis-Vale-Verification-0.4.3.exe' } else { 'artifacts\Jarvis-Vale-Setup-0.4.3.exe' }
+$installerName = if ($VerificationBuild) { 'artifacts\Jarvis-Vale-Verification-0.4.4.exe' } else { 'artifacts\Jarvis-Vale-Setup-0.4.4.exe' }
 $installer = Join-Path $PSScriptRoot $installerName
 if (-not (Test-Path -LiteralPath $installer)) { throw 'Primero compila el instalador correspondiente.' }
 function Invoke-VerificationProcess([string]$Executable, [string[]]$Arguments) {
@@ -35,7 +35,7 @@ $installArguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/NOICON
 Invoke-VerificationProcess $installer ($installArguments + ('/LOG="' + (Join-Path $PSScriptRoot 'build\installer-install.log') + '"'))
 Assert-StartupUnchanged
 Assert-TestRegistration
-$shortcutName = if ($VerificationBuild) { 'Jarvis - Vale Verification 0.4.3\Jarvis - Vale.lnk' } else { 'Jarvis - Vale\Jarvis - Vale.lnk' }
+$shortcutName = if ($VerificationBuild) { 'Jarvis - Vale Verification 0.4.4\Jarvis - Vale.lnk' } else { 'Jarvis - Vale\Jarvis - Vale.lnk' }
 $testShortcut = Join-Path ([Environment]::GetFolderPath('Programs')) $shortcutName
 if (Test-Path -LiteralPath $testShortcut) { throw 'La prueba solicito no crear accesos directos, pero se creo uno.' }
 $installedExecutable = Join-Path $testDirectory 'Jarvis.exe'

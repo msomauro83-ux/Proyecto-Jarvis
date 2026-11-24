@@ -6,7 +6,7 @@ $testOutput = Join-Path $PSScriptRoot 'build'
 New-Item -ItemType Directory -Path $testOutput -Force | Out-Null
 $testExecutable = Join-Path $testOutput 'CommandTests.exe'
 $testSources = @((Join-Path $PSScriptRoot 'src\Commands.cs'), (Join-Path $PSScriptRoot 'src\Core.cs'), (Join-Path $PSScriptRoot 'src\SpeechGrammar.cs'), (Join-Path $PSScriptRoot 'tests\CommandTests.cs'))
-$testSources += @((Join-Path $PSScriptRoot 'src\AppCatalog.cs'), (Join-Path $PSScriptRoot 'tests\AppCatalogTests.cs'))
+$testSources += @((Join-Path $PSScriptRoot 'src\AppCatalog.cs'), (Join-Path $PSScriptRoot 'src\LocalSpeech.cs'), (Join-Path $PSScriptRoot 'tests\AppCatalogTests.cs'))
 $speechAssembly = Get-ChildItem -LiteralPath (Join-Path $env:WINDIR 'Microsoft.NET\assembly\GAC_MSIL\System.Speech') -Filter System.Speech.dll -Recurse | Select-Object -First 1 -ExpandProperty FullName
 $testArguments = @('/nologo', '/target:exe', '/platform:x64', '/codepage:65001', '/utf8output', ('/out:' + $testExecutable), '/reference:System.dll', '/reference:System.Core.dll', '/reference:System.Drawing.dll', '/reference:System.Windows.Forms.dll', '/reference:System.Web.Extensions.dll')
 $testArguments += ('/reference:' + $speechAssembly)

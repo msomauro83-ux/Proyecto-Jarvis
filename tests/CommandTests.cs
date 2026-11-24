@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Speech.Synthesis;
 using System.Web.Script.Serialization;
 using Jarvis;
 
@@ -95,6 +97,8 @@ namespace JarvisTests
                 bool invalidPlanRejected = false;
                 try { WindowsActions.Execute(new CommandPlan { Action = "shell", Value = "whoami" }); } catch (ArgumentException) { invalidPlanRejected = true; }
                 Check(invalidPlanRejected, "Execute revalida antes de ejecutar");
+                TestStartupCommand();
+                TestPreferredVoice();
                 TestSettingsMigration();
                 assertions += AppCatalogTests.Run();
                 Console.WriteLine("OK: " + assertions + " comprobaciones locales, sin ejecutar acciones.");
@@ -145,6 +149,38 @@ namespace JarvisTests
             Check(rejected, "La confirmación solo corresponde a suspender o apagar");
             var shutdown = ComputerPower.CreateShutdownStartInfo();
             Check(shutdown.FileName == System.IO.Path.Combine(Environment.SystemDirectory, "shutdown.exe") && shutdown.Arguments == "/s /t 0" && !shutdown.UseShellExecute && shutdown.CreateNoWindow && String.IsNullOrEmpty(shutdown.Verb), "Apagado local fijo, sin fuerza ni elevación; solo se inspecciona, no se ejecuta");
+        }
+
+        private static void TestStartupCommand()
+        {
+            Equal("\"C:\\Jarvis\\Jarvis.exe\" --tray --listen", StartupRegistration.BuildCommand(@"C:\Jarvis\Jarvis.exe"), "El inicio abre Jarvis en la bandeja con escucha activa");
+            Equal("\"C:\\Users\\Usuario\\Programs\\Jarvis Vale\\Jarvis.exe\" --tray --listen", StartupRegistration.BuildCommand(@"C:\Users\Usuario\Programs\Jarvis Vale\Jarvis.exe"), "Las rutas con espacios conservan las comillas y la escucha activa");
+            Equal("\"C:\\Jarvis\\Jarvis.exe\" --tray --listen", StartupRegistration.BuildCommand(@"C:\Jarvis\old\..\Jarvis.exe"), "El inicio conserva una ruta absoluta normalizada");
+            foreach (string invalid in new string[] { null, "", "   ", "Jarvis.exe", @".\Jarvis.exe", @"C:\Jarvis\run.bat", "C:\\Jarvis\\Jarvis.exe\" --other", "C:\\Jarvis\\Jarvis.exe\n", "C:\\Jarvis\\Jarvis.exe --other" })
+            {
+                bool rejected = false;
+                try { StartupRegistration.BuildCommand(invalid); }
+                catch (ArgumentException) { rejected = true; }
+                Check(rejected, "El inicio rechaza una ruta inválida o con argumentos añadidos");
+            }
+        }
+
+        private static void TestPreferredVoice()
+        {
+            using (SpeechSynthesizer speaker = LocalSpeech.CreateSpeaker())
+            {
+                speaker.SetOutputToNull();
+                InstalledVoice[] enabled = speaker.GetInstalledVoices().Where(v => v.Enabled).ToArray();
+                InstalledVoice sabina = enabled.FirstOrDefault(v => String.Equals(v.VoiceInfo.Name, "Microsoft Sabina Desktop", StringComparison.OrdinalIgnoreCase) && String.Equals(v.VoiceInfo.Culture.Name, "es-MX", StringComparison.OrdinalIgnoreCase));
+                if (sabina != null)
+                    Equal(sabina.VoiceInfo.Name, speaker.Voice.Name, "Las respuestas usan Microsoft Sabina Desktop de México cuando está disponible");
+                else if (enabled.Any(v => String.Equals(v.VoiceInfo.Culture.Name, "es-MX", StringComparison.OrdinalIgnoreCase)))
+                    Equal("es-MX", speaker.Voice.Culture.Name, "Sin Sabina se prefiere otra voz de español de México");
+                else if (enabled.Any(v => v.VoiceInfo.Culture.TwoLetterISOLanguageName == "es"))
+                    Equal("es", speaker.Voice.Culture.TwoLetterISOLanguageName, "Sin voces de México se conserva una voz en español");
+                else
+                    Check(speaker.Voice != null, "Sin voces en español se conserva la voz disponible de Windows");
+            }
         }
 
         private static void TestSettingsMigration()

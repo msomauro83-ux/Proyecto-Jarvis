@@ -87,9 +87,19 @@ namespace Jarvis
         {
             using (RegistryKey key = Registry.CurrentUser.CreateSubKey(RegistryPath))
             {
-                if (enabled) key.SetValue(ValueName, "\"" + System.Windows.Forms.Application.ExecutablePath + "\" --tray");
+                if (enabled) key.SetValue(ValueName, BuildCommand(System.Windows.Forms.Application.ExecutablePath));
                 else key.DeleteValue(ValueName, false);
             }
+        }
+
+        internal static string BuildCommand(string executable)
+        {
+            if (String.IsNullOrWhiteSpace(executable) || executable.IndexOfAny(Path.GetInvalidPathChars()) >= 0 || !Path.IsPathRooted(executable))
+                throw new ArgumentException("El inicio requiere la ruta absoluta de Jarvis.exe.", "executable");
+            string root = Path.GetPathRoot(executable);
+            if (root == "\\" || root.EndsWith(":", StringComparison.Ordinal) || !String.Equals(Path.GetExtension(executable), ".exe", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("El inicio requiere la ruta absoluta de un ejecutable.", "executable");
+            return "\"" + Path.GetFullPath(executable) + "\" --tray --listen";
         }
     }
 }

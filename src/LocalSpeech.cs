@@ -130,6 +130,25 @@ namespace Jarvis
             }
         }
 
+        internal static SpeechSynthesizer CreateSpeaker()
+        {
+            SpeechSynthesizer result = new SpeechSynthesizer();
+            try
+            {
+                InstalledVoice[] voices = result.GetInstalledVoices().Where(v => v.Enabled).ToArray();
+                InstalledVoice voice = voices.FirstOrDefault(v => String.Equals(v.VoiceInfo.Name, "Microsoft Sabina Desktop", StringComparison.OrdinalIgnoreCase) && String.Equals(v.VoiceInfo.Culture.Name, "es-MX", StringComparison.OrdinalIgnoreCase))
+                    ?? voices.FirstOrDefault(v => String.Equals(v.VoiceInfo.Culture.Name, "es-MX", StringComparison.OrdinalIgnoreCase))
+                    ?? voices.FirstOrDefault(v => v.VoiceInfo.Culture.TwoLetterISOLanguageName == "es");
+                if (voice != null) result.SelectVoice(voice.VoiceInfo.Name);
+                return result;
+            }
+            catch
+            {
+                result.Dispose();
+                throw;
+            }
+        }
+
         public void Say(string text)
         {
             if (disposed || String.IsNullOrWhiteSpace(text)) return;
@@ -139,9 +158,7 @@ namespace Jarvis
                 {
                     if (speaker == null)
                     {
-                        speaker = new SpeechSynthesizer();
-                        InstalledVoice voice = speaker.GetInstalledVoices().FirstOrDefault(v => v.Enabled && v.VoiceInfo.Culture.TwoLetterISOLanguageName == "es");
-                        if (voice != null) speaker.SelectVoice(voice.VoiceInfo.Name);
+                        speaker = CreateSpeaker();
                         speaker.SpeakCompleted += delegate(object sender, SpeakCompletedEventArgs e) { lock (speakerGate) { if (e.Prompt == activePrompt) speaking = false; } };
                     }
                     speaker.SpeakAsyncCancelAll();
